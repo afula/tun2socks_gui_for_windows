@@ -25,6 +25,8 @@ def file_path(name):
 def start_tun(Proxy):
     cmd_run_lite('start tun2socks -device tun://TunMax -proxy {}'.format(Proxy.strip()))
 
+def start_ostrich():
+    cmd_run_lite('start ostrich -c socks_auto.json')
 
 def set_tun_route(mode, iplist):
     while True:
@@ -36,28 +38,28 @@ def set_tun_route(mode, iplist):
         except:
             print('finding tun device...')
     if mode == 'full':
-        cmd_run_lite('netsh interface ip set address TunMax static 10.0.68.10 255.255.255.0 10.0.68.1 3')  # 3是metric
+        cmd_run_lite('netsh interface ip set address TunMax static 240.255.0.2 255.255.255.0 240.255.0.1 3')  # 3是metric
     else:
-        cmd_run_lite('netsh interface ip set address TunMax static 10.0.68.10 255.255.255.0 10.0.68.1 9999')
+        cmd_run_lite('netsh interface ip set address TunMax static 240.255.0.2 255.255.255.0 240.255.0.1 9999')
         while True:
             try:
                 tmp = cmd_run('ipconfig')
                 time.sleep(0.1)
-                if '10.0.68.10' in tmp:
+                if '240.255.0.2' in tmp:
                     break
             except:
                 print('waiting for TunMax to start completely')
         tmp = []
         for x in iplist:
-            tmp.append("route add {} mask 255.255.255.255 10.0.68.1 metric 3".format(x))
+            tmp.append("route add {} mask 255.255.255.255 240.255.0.1 metric 3".format(x))
         cmd_run_lite(' & '.join(tmp))
 
 
 def del_route():
-    cmd_list = ['route delete 0.0.0.0 10.0.68.1']
+    cmd_list = ['route delete 0.0.0.0 240.255.0.1']
     if config['Mode'] == 'expert':
         for ip in ExpertIP:
-            cmd_list.append('route delete {} 10.0.68.1'.format(ip))
+            cmd_list.append('route delete {} 240.255.0.1'.format(ip))
     else:
         for ip in server_name:
             cmd_list.append('route delete {} {}'.format(ip, config['Gateway']))
@@ -143,6 +145,8 @@ if __name__ == "__main__":
                 for ip in ips:
                     cmd_set_route.append('route add {} {} metric 5'.format(ip, config['Gateway']))
         cmd_run_lite(' & '.join(cmd_set_route))
+    # 启动ostrich
+    multiprocessing.Process(target=start_ostrich).start()
     # 启动Tun设备
     multiprocessing.Process(target=start_tun, args=(config['Proxy'],)).start()
     while True:
